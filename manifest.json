@@ -1,14 +1,14 @@
 {
   "name": "バイオフィルム画像処理アプリ",
   "short_name": "フィルム解析",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#fee",
   "theme_color": "#fee",
   "icons": [
     {
-      "src": "/icon144.png",
+      "src": "./icon144.png",
       "type": "image/png",
       "sizes": "144x144"
     }
