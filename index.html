@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="./css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="./js/freedraw.js"></script>
+    <script>
+      window.addEventListener('load', function() {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/sw.js');
+        }
+      });
+    </script>
+    <title>バイオフィルム除去の計測</title>
+  </head>
+
+  <body>
+    <ul class="menu">
+      <li class="menu_item">Step1</li>
+      <li class="menu_item">Step2</li>
+      <li class="menu_item">Step3</li>
+      <li class="menu_item">Step4</li>
+      <li class="menu_item">Step5</li>
+    </ul>
+    <div class="menu_dammy"></div>
+
+    <div class="firstview">
+    <p id="title">褥瘡アセスメントに使用する<br>バイオフィルムの簡便定量アプリケーション</p>
+    <p>
+      !DebugMode // model: iPad-width768px.
+      <br />
+      Licence: Apache 2.0, Web-assembly library:
+      <a href="https://github.com/knicknic/WASM-ImageMagick" target="_blank">https://github.com/knicknic/WASM-ImageMagick</a>
+    </p>
+    <p>
+      バイオフィルム検出ツールの検体写真と傷の写真から検出量を数値化します。結果はCSVと画像のダウンロードができます。<br>
+      2枚の写真から経時的な比較も可能です。<br>
+      タブレット・スマホの方は画像選択時に撮影することもできます。<br>
+      外部サーバーとの通信のない画像処理により、セキュアで比較的高速な作業ができます。<br>
+      このアプリについてのご連絡は中村(nakamura-shunsuke821@g.ecc.u-tokyo.ac.jp)までお願いします。
+    </p>
+    </div>
+
+    <div class="accordion">
+      <div class="label">
+        Step1 - ホワイトバランス調整 <span style="color:#66f">■</span> => <span style="color:#fff">■</span>
+      </div>
+      <div class="modalCover"></div>
+      <div class="modalContent">
+        <button class="modalClose top">close</button>
+        <p>Step1 ホワイトバランスの調整</p>
+        <p>■ 創部の画像と、調べたいバイオフィルムの検体画像をそれぞれ選択します。バイオフィルムの画像は洗浄前後での比較のため2つファイル選択できるところがあります。</p>
+        <p>■ ファイルを選択すると、数秒ののちに画面に表示されます。</p>
+        <p>■ 表示されたら、染色にムラのない点をタッチしてチェックしてください。</p>
+        <p>■ 丸で囲まれた色を白色に調整します。colors(rgb)の色表示を見て、よいと思ったら下のボタンを押してStep2へ。</p>
+
+        <p>※ ファイルを選択する際に、その場で写真を撮り画像として使うこともできます。</p>
+        <p>※ 画像の比率は保たれてアップロードされます。環境によっては画像が大きく表示されますが、順番にチェックしてください。</p>
+        <button class="modalClose bottom">close</button>
+      </div>
+      <div class="grid expand">
+        <div class="help">
+          <span class="modalOpen">Step1のつかいかた : タッチしてオープン</span>
+        </div>
+        傷の画像 :<br>
+        <input type="file" id="uploaded3" accept="image/*" /><br />
+        <img id="preview_uploaded3" class="maxWidth100 woundImg" src=""/><br>
+
+        <div class="flex">
+          <div class="flexItem">
+            メンブレンの画像1:
+            <input type="file" id="uploaded" accept="image/*" /><br />
+            <canvas id="preview_uploaded_check"></canvas>
+            <canvas id="preview_uploaded"></canvas>
+            <p>
+              clicked(X,Y): <span id="click_pointXY"></span> <br />colors(rgb):
+              <span id="click_colorLabel"></span><span id="click_pointRGB"></span>
+            </p>
+            <label id="rLevel" data-level=""></label>
+            <label id="gLevel" data-level=""></label>
+            <label id="bLevel" data-level=""></label>
+          </div>
+          <div class="flexItem">
+            メンブレンの画像2:
+            <input type="file" id="uploaded2" accept="image/*" /><br />
+            <canvas id="preview_uploaded2_check"></canvas>
+            <canvas id="preview_uploaded2"></canvas>
+            <p>
+              clicked(X,Y): <span id="click_pointXY2"></span> <br />colors(rgb):
+              <span id="click_colorLabel2"></span><span id="click_pointRGB2"></span>
+            </p>
+            <label id="rLevel2" data-level=""></label>
+            <label id="gLevel2" data-level=""></label>
+            <label id="bLevel2" data-level=""></label>
+          </div>
+        </div>
+        <button id="white_point" class="buttonNext">点を選んだのでホワイトバランス調整をかける</button>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="label close">
+        Step2 - 画像の倍率合わせ <span style="font-size: 0.7em;color: #fff;">■</span>■ => <span style="color:#fff">■■</span>
+      </div>
+      <div class="modalCover"></div>
+      <div class="modalContent">
+        <button class="modalClose top">close</button>
+        <p>Step2 - マーカーを基準にしたサイズ調整</p>
+        <p>■ 次はそれぞれの画像を同じサイズ倍率にします。キャスマッチと呼ばれるマーカーを重ねることで同じ基準を目指します。</p>
+        <p>■ サイズ調整のボタンを押すと操作画面が出てきます。チェックボックスで画像の状態を変えながら、下のスライダーで合わせていきます。先に角度を合わせると調整が楽になります。</p>
+        <p>■ ここではまだ傷とバイオフィルムの形は合わせないので、倍率が同じになるよう操作してください。細かい調整には、直接数字を打ち込むという方法もありです。</p>
+        <p>■ マーカーが重なったら、次へのボタンを押しStep3へ。</p>
+        <button class="modalClose bottom">close</button>
+      </div>
+      <div class="grid expand is-closed">
+        <div class="help">
+          <span class="modalOpen">Step2のつかいかた : タッチしてオープン</span>
+        </div>
+        <div class="flex">
+          <div class="flexItem">
+            ホワイトバランス調整画像1:<br>
+            <img src="" class="maxWidth100 whiteImg1"/>
+          </div>
+          <div class="flexItem">
+            ホワイトバランス調整画像2:<br>
+            <img src="" class="maxWidth100 whiteImg2"/>
+          </div>
+        </div>
+
+        倍率合わせ:<br>
+        <button class="modalOpen">画像1をサイズ調整</button> <input type="text" value="1.0" id="img1_scale"><br>
+        <button class="modalOpen">画像2をサイズ調整</button> <input type="text" value="1.0" id="img2_scale">
+
+        <div class="modalCover"></div>
+        <div class="modalContent">
+          <button class="modalClose top">close</button>
+          <p>画像1の倍率合わせ</p>
+          <div class="height600hidden">
+            <div><img src="" class="absolute woundImg"></div>
+            <div><img src="" class="overlay whiteImg1" id="img1_sizeAdjust"></div>
+          </div>
+          <form name="sizeFit1" class="adjuster adjuster1">
+            <label><input type="checkbox" name="imageSwitch" checked>visible</label>
+            <label><input type="checkbox" name="imageSwitch" checked>whitebalance</label>
+            <label><input type="checkbox" name="imageSwitch" checked>overlay</label>
+            <label><input type="checkbox" name="imageSwitch">difference</label><br>
+            回転角度<input type="number" step="0.1" value="0">deg<input type="range" step="0.1" min="-180" max="180" value="0"><br>
+            拡大倍率<input type="number" step="0.01" value="1">scale<input type="range" step="0.01" min="0" max="3" value="1"><br>
+            横の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+            縦の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+          </form>
+          <button class="modalClose bottom hidden">close</button>
+        </div>
+
+        <div class="modalCover"></div>
+        <div class="modalContent">
+          <button class="modalClose top">close</button>
+          <p>画像2の倍率合わせ</p>
+          <div class="height600hidden">
+            <div><img src="" class="absolute woundImg"></div>
+            <div><img src="" class="overlay whiteImg2" id="img2_sizeAdjust"></div>
+          </div>
+          <form name="sizeFit2" class="adjuster adjuster2">
+            <label><input type="checkbox" name="imageSwitch" checked>visible</label>
+            <label><input type="checkbox" name="imageSwitch" checked>whitebalance</label>
+            <label><input type="checkbox" name="imageSwitch" checked>overlay</label>
+            <label><input type="checkbox" name="imageSwitch">difference</label><br>
+            回転角度<input type="number" step="0.1" value="0">deg<input type="range" step="0.1" min="-180" max="180" value="0"><br>
+            拡大倍率<input type="number" step="0.01" value="1">scale<input type="range" step="0.01" min="0" max="3" value="1"><br>
+            横の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+            縦の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+          </form>
+          <button class="modalClose bottom hidden">close</button>
+        </div>
+        <button id="size_fit" class="buttonNext">倍率を合わせたので次へ！</button>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="label close">
+        Step3 - 位置合わせと範囲指定 <span style="background-color:white; color:white; font-size: 0.8em;">○</span> => <span style="background-color:white; color:black; font-size: 0.8em;">○</span>
+      </div>
+      <div class="modalCover"></div>
+      <div class="modalContent">
+        <button class="modalClose top">close</button>
+        <p>Step3 - 測定する範囲を決める</p>
+        <p>■ 縮尺が揃ったところで、創部を合わせていきます。</p>
+        <p>■ 位置調整ではStep2と似たインターフェースの操作画面が出ますが、倍率はStep2のもので固定であることと、傷に合わせるため左右が反転しています。</p>
+        <p>■ 位置調整の画面の変化が元の画面の画像にも反映されています。うまく重なったら、次は比較のために創部の範囲を指定します。</p>
+        <p>■ 画像にタッチすると線が引けます(マウスでも可)。線は触れている間は繋がり、離すと終点と始点を自動的に結びます。もう一度触ると前回の線は消えますので、やり直しが可能です。</p>
+        <p>■ 位置・範囲を指定できたら下のボタンを押し、該当部分の検体の計測をします。</p>
+
+        <button class="modalClose bottom">close</button>
+      </div>
+      <div class="grid expand is-closed">
+        <div class="help">
+          <span class="modalOpen">Step3のつかいかた : タッチしてオープン</span>
+        </div>
+
+        1. 位置合わせ:<br>
+        <button class="modalOpen">画像1を位置調整</button> : <span id="img1_position">0deg, 0px, 0px</span><br>
+        <button class="modalOpen">画像2を位置調整</button> : <span id="img2_position">0deg, 0px, 0px</span><br>
+
+        <div class="modalCover"></div>
+        <div class="modalContent">
+          <button class="modalClose top">close</button>
+          <p>画像1の位置合わせ: 反転済み</p>
+          <div class="height600hidden">
+            <div><img src="" class="absolute woundImg"></div>
+            <div><img src="" class="img1_positionAdjust overlay whiteImg1" style="transform: scale(-1,1);"></div>
+          </div>
+          <form name="positionFit1" class="adjuster adjuster3">
+            <label><input type="checkbox" name="imageSwitch" checked>visible</label>
+            <label><input type="checkbox" name="imageSwitch" checked>whitebalance</label>
+            <label><input type="checkbox" name="imageSwitch" checked>overlay</label>
+            <label><input type="checkbox" name="imageSwitch">difference</label><br>
+            回転角度<input type="number" step="0.1" value="0">deg<input type="range" step="0.1" min="-180" max="180" value="0"><br>
+            横の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+            縦の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+          </form>
+          <button class="modalClose bottom hidden">close</button>
+        </div>
+
+        <div class="modalCover"></div>
+        <div class="modalContent">
+          <button class="modalClose top">close</button>
+          <p>画像2の位置合わせ: 反転済み</p>
+          <div class="height600hidden">
+            <div><img src="" class="absolute woundImg"></div>
+            <div><img src="" class="img2_positionAdjust overlay whiteImg2" style="transform: scale(-1,1);"></div>
+          </div>
+          <form name="positionFit2" class="adjuster adjuster4">
+            <label><input type="checkbox" name="imageSwitch" checked>visible</label>
+            <label><input type="checkbox" name="imageSwitch" checked>whitebalance</label>
+            <label><input type="checkbox" name="imageSwitch" checked>overlay</label>
+            <label><input type="checkbox" name="imageSwitch">difference</label><br>
+            回転角度<input type="number" step="0.1" value="0">deg<input type="range" step="0.1" min="-180" max="180" value="0"><br>
+            横の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+            縦の移動<input type="number" step="1" value="0">px<input type="range" step="1" min="-300" max="300" value="0"><br>
+          </form>
+          <button class="modalClose bottom hidden">close</button>
+        </div>
+
+         <hr>
+
+        2. 創縁をなぞって囲う(外側や内側にする必要はなし): <label><input type="checkbox" name="imageSwitch" checked id="drawLineCheck">ブロッティング画像を表示</label><br>
+        <div id="drawLine">
+          <img src="" class="woundImg">
+          <img src="" class="img1_positionAdjust whiteImg1">
+          <img src="" class="img2_positionAdjust whiteImg2">
+          <canvas id="freeDraw"></canvas>
+        </div>
+        <button id="position_fit" class="buttonNext">位置指定できたので計測！</button>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="label close">
+        Step4 - 測定 <span style="color:#fff;">■</span> <span style="color:gray;">■</span> <span style="color:black;">■</span>
+      </div>
+      <div class="modalCover"></div>
+      <div class="modalContent">
+        <button class="modalClose top">close</button>
+        <p>Step4 - 輝度計算と表示</p>
+        <p>■ ここでは自動的に処理が進み、画像が表示されているはずです。</p>
+        <p>■ 輝度計算のためのモノクロ画像と、Step3で指定された範囲の切り抜きが載り。最後に選択範囲の輝度情報が表になっています。</p>
+        <p>■ 同じものが次のステップにもあります。処理過程を確認して、ボタンを押し記録・保存へ。</p>
+        <p>※ うまくいってなければ、好きなステップからやり直すことができます。反対に、ステップを飛ばすことは想定されていません。順番にご使用ください。</p>
+        <button class="modalClose bottom">close</button>
+      </div>
+      <div class="grid expand is-closed">
+        <div class="help">
+          <span class="modalOpen">Step4のつかいかた : タッチしてオープン</span>
+        </div>
+        <div class="flex">
+          <div class="flexItem">
+            輝度測定用モノクロ1:<br>
+            <img src="" id="grayImg1"/>
+          </div>
+          <div class="flexItem">
+            輝度測定用モノクロ2:<br>
+            <img src="" id="grayImg2"/>
+          </div>
+        </div>
+        <canvas id="lastCanvas1"></canvas><br>
+        <canvas id="lastCanvas2"></canvas><br>
+        <table id="staticTable"></table>
+        <button id="record_results" class="buttonNext">データの記録へ</button>
+      </div>
+    </div>
+
+    <div class="accordion">
+      <div class="label close">
+        Step5 - データの記録 <span style="background-color:white; color:black; font-size: 0.8em; font-weight: bold;">レ</span>
+      </div>
+      <div class="modalCover"></div>
+      <div class="modalContent">
+        <button class="modalClose top">close</button>
+        <p>Step5 - 結果表示とダウンロード</p>
+        <p>■ エクセルにも使えるcsv形式でのデータの出力と、選択範囲を示す画像の出力があります。</p>
+
+        <p>※ それぞれダウンロードできますが、それをせずに他のページに飛んだりこのページを更新してしまうと消えてしまいます(外部サーバーなどにアップロードしていないためです)。</p>
+        <p>※ 画像処理過程・インターフェース・出力画像などの要望をはじめ、他の画像処理に応用するモジュールの相談などありましたら中村(nakamura-shunsuke821@g.ecc.u-tokyo.ac.jp)まで。</p>
+        <button class="modalClose bottom">close</button>
+      </div>
+      <div class="grid expand is-closed">
+        <div class="help">
+          <span class="modalOpen">Step5のつかいかた : タッチしてオープン</span>
+        </div>
+        <table id="staticTable2"></table>
+        <a href="" download="biofilm.csv" id="csvDownload">
+          <button class="buttonNext">CSVでダウンロード</button>
+        </a><br>
+        <hr>
+        <img src="" id="imgDownloadDemo">
+        <a href="" download="biofilm.png" id="imgDownload">
+          <button class="buttonNext">画像をダウンロード</button>
+        </a>
+      </div>
+    </div>
+
+    <script type="module">
+      //import the library to talk to imagemagick
+      import * as Magick from "https://knicknic.github.io/wasm-imagemagick/magickApi.js";
+
+      // Make accordions & toggle state func.
+      const labels = document.querySelectorAll(".label");
+      const expands = document.querySelectorAll(".expand");
+      const toggleAccordion = (index) => {
+        labels[index].classList.toggle("close");
+        expands[index].classList.toggle("is-closed");
+      };
+      for (let i = 0; i < labels.length; i++) {
+        labels[i].addEventListener("click", () => {
+          toggleAccordion(i);
+        });
+      }
+
+      // menu linked
+      const menuItems = document.querySelectorAll(".menu_item");
+      for (let i = 0; i < menuItems.length; i++) {
+        menuItems[i].addEventListener("click", () => {
+          toggleAccordion(i);
+        });
+      }
+
+      // make modal windows
+      const modalCovers = document.querySelectorAll(".modalCover");
+      const modalContents = document.querySelectorAll(".modalContent");
+      const toggleModal = (index) => {
+        modalCovers[index].classList.toggle("active");
+        modalContents[index].classList.toggle("active");
+      };
+      const modalOpens = document.querySelectorAll(".modalOpen");
+      const modalCloses = document.querySelectorAll(".modalClose");
+      for (let i = 0; i < modalOpens.length; i++) {
+        modalOpens[i].addEventListener("click", () => {
+          toggleModal(i);
+        });
+        modalCloses[i * 2].addEventListener("click", () => {
+          toggleModal(i);
+        });
+        modalCloses[i * 2 + 1].addEventListener("click", () => {
+          toggleModal(i);
+        });
+        modalCovers[i].addEventListener("click", () => {
+          toggleModal(i);
+        });
+      }
+
+      // draw preview func
+      const preview_uploaded = document.getElementById("preview_uploaded");
+      const preview_uploaded_check = document.getElementById("preview_uploaded_check");
+      const preview_uploaded2 = document.getElementById("preview_uploaded2");
+      const preview_uploaded2_check = document.getElementById("preview_uploaded2_check");
+      function drawCanvas(canvas, canvas_check, url) {
+        let ctx = canvas.getContext("2d");
+        let image = new Image();
+        image.src = url;
+        image.onload = () => {
+          canvas.width = image.width;
+          canvas.height = image.height;
+          canvas_check.width = image.width;
+          canvas_check.height = image.height;
+          ctx.drawImage(image, 0, 0);
+        };
+      }
+
+      // variables arround imagemagick 
+      let sourceImage;
+      let sourceImage2;
+      let naturalWidth;
+      let naturalWidth2;
+      let whiteImageBuffer1;
+      let whiteImageBuffer2;
+      const woundImg = document.getElementsByClassName('woundImg');
+      const whiteImg1 = document.getElementsByClassName('whiteImg1');
+      const whiteImg2 = document.getElementsByClassName('whiteImg2');
+      let woundImgBlob;
+      let rawImg1Blob;
+      let rawImg2Blob;
+      let whiteImg1Blob;
+      let whiteImg2Blob;
+
+      // for Study
+      let woundFileName;
+      let img1FileName;
+      let img2FileName;
+      let timeCount = 0;
+      let countUp = () => {
+        timeCount += 1;
+      };
+      // timer will start at reading a wound image.
+
+      // read & convert uploaded images
+      document.getElementById("uploaded").addEventListener("change", (e) => {
+        let file = e.target.files[0];
+        img1FileName = file.name;
+        let reader = new FileReader();
+        reader.readAsArrayBuffer(file);
+
+        reader.onload = async () => {
+          let sourceBytes = new Uint8Array(reader.result);
+          const files = [{ name: "srcFile.png", content: sourceBytes }];
+          const command = [
+            "convert",
+            "srcFile.png",
+            "-resize",
+            "800x600>",
+            "out.png"
+          ];
+          let result = await Magick.Call(files, command);
+
+          let resultBytes = result[0].buffer;
+          sourceImage = result[0].buffer;
+          rawImg1Blob = result[0].blob;
+
+          let binaryData = "";
+          for (let i = 0; i < resultBytes.byteLength; i++) {
+            binaryData += String.fromCharCode(resultBytes[i]);
+          }
+          drawCanvas(preview_uploaded, preview_uploaded_check, "data:image/jpeg;base64," + window.btoa(binaryData));
+        };
+
+      let image = new Image();
+      image.onload = function() {
+        naturalWidth = image.naturalWidth;
+      }
+      image.src = URL.createObjectURL(file);
+      });
+
+      document.getElementById("uploaded2").addEventListener("change", (e) => {
+        let file = e.target.files[0];
+        img2FileName = file.name;
+        let reader = new FileReader();
+        reader.readAsArrayBuffer(file);
+
+        reader.onload = async () => {
+          let sourceBytes = new Uint8Array(reader.result);
+          const files = [{ name: "srcFile.png", content: sourceBytes }];
+          const command = [
+            "convert",
+            "srcFile.png",
+            "-resize",
+            "800x600>",
+            "out.png"
+          ];
+          let result = await Magick.Call(files, command);
+
+          let resultBytes = result[0].buffer;
+          sourceImage2 = result[0].buffer;
+          rawImg2Blob = result[0].blob;
+
+          let binaryData = "";
+          for (let i = 0; i < resultBytes.byteLength; i++) {
+            binaryData += String.fromCharCode(resultBytes[i]);
+          }
+          drawCanvas(preview_uploaded2, preview_uploaded2_check,"data:image/jpeg;base64," + window.btoa(binaryData));
+        };
+
+      let image = new Image();
+      image.onload = function() {
+        naturalWidth2 = image.naturalWidth;
+      }
+      image.src = URL.createObjectURL(file);        
+      });
+
+      document.getElementById("uploaded3").addEventListener("change", (e) => {
+        let file = e.target.files[0];
+        let woundFileName = file.name;
+        let reader = new FileReader();
+        reader.readAsArrayBuffer(file);
+
+        reader.onload = async () => {
+          let sourceBytes = new Uint8Array(reader.result);
+          const files = [{ name: "srcFile.png", content: sourceBytes }];
+          const command = [
+            "convert",
+            "srcFile.png",
+            "-resize",
+            "800x600>",
+            "out.png"
+          ];
+          let result = await Magick.Call(files, command);
+
+          let resultBlob = result[0].blob;
+          woundImgBlob = result[0].blob;
+
+          for (let i = 0; i < woundImg.length; i++) {
+            woundImg[i].src = URL.createObjectURL(resultBlob);
+          }
+
+          setInterval(countUp, 1000);
+        };
+      });
+
+
+      // step1 canvas click func.
+      preview_uploaded.addEventListener("click", (e) => {
+        let ctx = preview_uploaded.getContext("2d");
+        let ctx_c = preview_uploaded_check.getContext("2d");
+        let rect = e.target.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        let y = e.clientY - rect.top;
+
+        document.getElementById("click_pointXY").innerText = `${x},${y}`;
+
+        let colors = ctx.getImageData(x, y, 1, 1).data;
+        document.getElementById(
+          "click_pointRGB"
+        ).innerText = `red:${colors[0]} green:${colors[1]} blue:${colors[2]}`;
+        document.getElementById(
+          "click_colorLabel"
+        ).style.backgroundColor = `rgba(${colors[0]},${colors[1]},${colors[2]},${colors[3]})`;
+        document.getElementById("click_colorLabel").style.display =
+          "inline-block";
+        document.getElementById("click_colorLabel").style.width = "2rem";
+        document.getElementById("click_colorLabel").style.height = "1rem";
+
+        document.getElementById("rLevel").dataset.level = `0%,${
+          (colors[0] / 255) * 100
+        }%`;
+        document.getElementById("gLevel").dataset.level = `0%,${
+          (colors[1] / 255) * 100
+        }%`;
+        document.getElementById("bLevel").dataset.level = `0%,${
+          (colors[2] / 255) * 100
+        }%`;
+
+        ctx_c.clearRect(0, 0, preview_uploaded.width, preview_uploaded.height);
+        ctx_c.beginPath();
+        ctx_c.strokeStyle = "red";
+        ctx_c.lineWidth = 2;
+        ctx_c.arc(x, y, 10, 0, Math.PI * 2, false);
+        ctx_c.stroke();
+      });
+
+      preview_uploaded2.addEventListener("click", (e) => {
+        let ctx = preview_uploaded2.getContext("2d");
+        let ctx_c = preview_uploaded2_check.getContext("2d");
+        let rect = e.target.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        let y = e.clientY - rect.top;
+
+        document.getElementById("click_pointXY2").innerText = `${x},${y}`;
+
+        let colors = ctx.getImageData(x, y, 1, 1).data;
+        document.getElementById(
+          "click_pointRGB2"
+        ).innerText = `red:${colors[0]} green:${colors[1]} blue:${colors[2]}`;
+        document.getElementById(
+          "click_colorLabel2"
+        ).style.backgroundColor = `rgba(${colors[0]},${colors[1]},${colors[2]},${colors[3]})`;
+        document.getElementById("click_colorLabel2").style.display =
+          "inline-block";
+        document.getElementById("click_colorLabel2").style.width = "2rem";
+        document.getElementById("click_colorLabel2").style.height = "1rem";
+
+        document.getElementById("rLevel2").dataset.level = `0%,${
+          (colors[0] / 255) * 100
+        }%`;
+        document.getElementById("gLevel2").dataset.level = `0%,${
+          (colors[1] / 255) * 100
+        }%`;
+        document.getElementById("bLevel2").dataset.level = `0%,${
+          (colors[2] / 255) * 100
+        }%`;
+
+        ctx_c.clearRect(0, 0, preview_uploaded2.width, preview_uploaded2.height);
+        ctx_c.beginPath();
+        ctx_c.strokeStyle = "red";
+        ctx_c.lineWidth = 2;
+        ctx_c.arc(x, y, 10, 0, Math.PI * 2, false);
+        ctx_c.stroke();
+      });
+
+      // call imagemagick - white balancing
+      let DoMagickCall1 = async function () {
+        // images from web:
+        // let fetchedSourceImage = await fetch(
+        //   "https://picsum.photos/id/237/200/300"
+        // );
+        // let arrayBuffer = await fetchedSourceImage.arrayBuffer();
+        // let sourceBytes = new Uint8Array(arrayBuffer);
+
+        let sourceBytes = new Uint8Array(sourceImage);
+        let click_point = document.getElementById("click_pointXY").innerText;
+
+        const rLevel = document.getElementById("rLevel").dataset.level;
+        const gLevel = document.getElementById("gLevel").dataset.level;
+        const bLevel = document.getElementById("bLevel").dataset.level;
+
+        const files = [{ name: "srcFile.png", content: sourceBytes }];
+        const command = [
+          "convert",
+          "srcFile.png",
+          "-channel",
+          "Red",
+          "-level",
+          rLevel,
+          "-channel",
+          "Green",
+          "-level",
+          gLevel,
+          "-channel",
+          "Blue",
+          "-level",
+          bLevel,
+          "out.png"
+        ];
+        let processedFiles = await Magick.Call(files, command);
+
+        // response can be multiple files (example split)
+        // here we know we just have one
+        let firstOutputImage = processedFiles[0];
+        for (let i = 0; i < whiteImg1.length; i++) {
+          whiteImg1[i].src = URL.createObjectURL(firstOutputImage["blob"]);          
+        }
+        whiteImg1Blob = firstOutputImage.blob;
+        whiteImageBuffer1 = firstOutputImage.buffer;
+      };
+
+      let DoMagickCall2 = async function () {
+        let sourceBytes = new Uint8Array(sourceImage2);
+        let click_point = document.getElementById("click_pointXY2").innerText;
+
+        const rLevel2 = document.getElementById("rLevel2").dataset.level;
+        const gLevel2 = document.getElementById("gLevel2").dataset.level;
+        const bLevel2 = document.getElementById("bLevel2").dataset.level;
+
+        const files = [{ name: "srcFile.png", content: sourceBytes }];
+        const command = [
+          "convert",
+          "srcFile.png",
+          "-channel",
+          "Red",
+          "-level",
+          rLevel2,
+          "-channel",
+          "Green",
+          "-level",
+          gLevel2,
+          "-channel",
+          "Blue",
+          "-level",
+          bLevel2,
+          "out.png"
+        ];
+        let processedFiles = await Magick.Call(files, command);
+
+        let firstOutputImage = processedFiles[0];
+        for (let i = 0; i < whiteImg2.length; i++) {
+          whiteImg2[i].src = URL.createObjectURL(firstOutputImage["blob"]);          
+        }
+        whiteImg2Blob = firstOutputImage.blob;
+        whiteImageBuffer2 = firstOutputImage.buffer;
+      };
+
+
+      // end of step1
+      const white_point = document.getElementById("white_point");
+      white_point.addEventListener("click", () => {
+        DoMagickCall1();
+        if(sourceImage2){
+          DoMagickCall2();
+        }
+        toggleAccordion(0);
+        toggleAccordion(1);
+        document.querySelectorAll('.menu_item')[0].classList.add('activate');
+        document.querySelectorAll('.label')[0].classList.add('activate');
+      });
+
+      // step2-1 adjuster
+      const adjusterRanges1 = document.querySelectorAll('.adjuster1 input[type="range"]');
+      const adjusterNumbers1 = document.querySelectorAll('.adjuster1 input[type="number"]');
+      const sizeAdjust1 = document.getElementById('img1_sizeAdjust');
+      const img1_scale = document.getElementById('img1_scale');
+      for (let i = 0; i < adjusterRanges1.length; i++) {
+        adjusterRanges1[i].addEventListener('input', ()=>{
+          sizeAdjust1.style.transform = `rotate(${adjusterRanges1[0].value}deg) scale(${adjusterRanges1[1].value}) translate(${adjusterRanges1[2].value}px, ${adjusterRanges1[3].value}px)`;
+          adjusterNumbers1[i].value = adjusterRanges1[i].value;
+          if(i == 1){
+            img1_scale.value = adjusterRanges1[i].value;
+          }
+        });
+        adjusterNumbers1[i].addEventListener('input',()=>{
+          sizeAdjust1.style.transform = `rotate(${adjusterNumbers1[0].value}deg) scale(${adjusterNumbers1[1].value}) translate(${adjusterNumbers1[2].value}px, ${adjusterNumbers1[3].value}px)`;
+          adjusterRanges1[i].value = adjusterNumbers1[i].value;
+          if(i == 1){
+            img1_scale.value = adjusterNumbers1[i].value;
+          }
+        });
+      }
+      const checkboxes1 = document.querySelectorAll('.adjuster1 input[type="checkbox"]');    
+      checkboxes1[0].addEventListener('change', ()=>{
+        sizeAdjust1.classList.toggle('visible');
+      });
+      checkboxes1[1].addEventListener('change', ()=>{
+        if(checkboxes1[1].checked){
+          sizeAdjust1.src = URL.createObjectURL(whiteImg1Blob);
+        }else{
+          sizeAdjust1.src = URL.createObjectURL(rawImg1Blob);
+        }
+      });
+      checkboxes1[2].addEventListener('change', ()=>{
+        sizeAdjust1.classList.toggle('overlay');
+      });
+      checkboxes1[3].addEventListener('change', ()=>{
+        sizeAdjust1.classList.toggle('difference');
+      });
+    
+      // step2-2 adjuster
+      const adjusterRanges2 = document.querySelectorAll('.adjuster2 input[type="range"]');
+      const adjusterNumbers2 = document.querySelectorAll('.adjuster2 input[type="number"]');
+      const sizeAdjust2 = document.getElementById('img2_sizeAdjust');
+      const img2_scale = document.getElementById('img2_scale');
+      for (let i = 0; i < adjusterRanges2.length; i++) {
+        adjusterRanges2[i].addEventListener('input',()=>{
+          sizeAdjust2.style.transform = `rotate(${adjusterRanges2[0].value}deg) scale(${adjusterRanges2[1].value}) translate(${adjusterRanges2[2].value}px, ${adjusterRanges2[3].value}px)`;
+          adjusterNumbers2[i].value = adjusterRanges2[i].value;
+          if(i == 1){
+            img2_scale.value = adjusterRanges2[i].value;
+          }
+        });
+        adjusterNumbers2[i].addEventListener('input',()=>{
+          sizeAdjust2.style.transform = `rotate(${adjusterNumbers2[0].value}deg) scale(${adjusterNumbers2[1].value}) translate(${adjusterNumbers2[2].value}px, ${adjusterNumbers2[3].value}px)`;
+          adjusterRanges2[i].value = adjusterNumbers2[i].value;
+          if(i == 1){
+            img2_scale.value = adjusterNumbers2[i].value;
+          }
+        });
+      }
+      const checkboxes2 = document.querySelectorAll('.adjuster2 input[type="checkbox"]');    
+      checkboxes2[0].addEventListener('change', ()=>{
+        sizeAdjust2.classList.toggle('visible');
+      });
+      checkboxes2[1].addEventListener('change', ()=>{
+        if(checkboxes2[1].checked){
+          sizeAdjust2.src = URL.createObjectURL(whiteImg2Blob);
+        }else{
+          sizeAdjust2.src = URL.createObjectURL(rawImg2Blob);
+        }
+      });
+      checkboxes2[2].addEventListener('change', ()=>{
+        sizeAdjust2.classList.toggle('overlay');
+      });
+      checkboxes2[3].addEventListener('change', ()=>{
+        sizeAdjust2.classList.toggle('difference');
+      });
+
+      //end of step2
+      const size_fit = document.getElementById("size_fit");
+      size_fit.addEventListener("click", () => {
+        toggleAccordion(1);
+        toggleAccordion(2);
+        document.querySelectorAll('.menu_item')[1].classList.add('activate');
+        document.querySelectorAll('.label')[1].classList.add('activate');
+
+        let woundImgTag = document.getElementById('preview_uploaded3');
+        let freeDrawDiv = document.getElementById('drawLine');
+        let freeDrawCanvas = document.getElementById('freeDraw');
+        freeDrawDiv.style.width = woundImgTag.naturalWidth + 'px';
+        freeDrawDiv.style.height = woundImgTag.naturalHeight + 'px';
+        freeDrawCanvas.width = woundImgTag.naturalWidth;
+        freeDrawCanvas.height = woundImgTag.naturalHeight;
+
+        // make 8bit gray whitepointed image1
+        let command8bitGray = [
+            "convert",
+            "srcFile.png",
+            "-colorspace",
+            "gray",
+            "-depth",
+            "8",
+            "out.png"
+        ];
+        (async () => {
+          let sourceBytes = new Uint8Array(whiteImageBuffer1);
+          let files = [{ name: "srcFile.png", content: sourceBytes }];
+
+          let result = await Magick.Call(files, command8bitGray);
+
+          let resultBlob = result[0].blob;
+
+          document.getElementById("grayImg1").src = URL.createObjectURL(
+            resultBlob
+          );
+        })();
+
+        if(sourceImage2){
+          (async () => {
+            let sourceBytes = new Uint8Array(whiteImageBuffer2);
+            let files = [{ name: "srcFile.png", content: sourceBytes }];
+
+            let result = await Magick.Call(files, command8bitGray);
+
+            let resultBlob = result[0].blob;
+
+            document.getElementById("grayImg2").src = URL.createObjectURL(
+              resultBlob
+            );
+          })();
+        }
+
+        let positionAdjust1 = document.getElementsByClassName('img1_positionAdjust');
+        let positionAdjust2 = document.getElementsByClassName('img2_positionAdjust');
+        positionAdjust1[0].style.transform = `scale(${img1_scale.value * -1},${img1_scale.value})`;
+        positionAdjust1[1].style.transform = `scale(${img1_scale.value * -1},${img1_scale.value})`;
+        positionAdjust2[0].style.transform = `scale(${img2_scale.value * -1},${img2_scale.value})`;
+        positionAdjust2[1].style.transform = `scale(${img2_scale.value * -1},${img2_scale.value})`;
+
+        });
+
+      // step3-1 adjuster
+      const adjusterRanges3 = document.querySelectorAll('.adjuster3 input[type="range"]');
+      const adjusterNumbers3 = document.querySelectorAll('.adjuster3 input[type="number"]');
+      const positionAdjust1 = document.getElementsByClassName('img1_positionAdjust');
+      const img1_position = document.getElementById('img1_position');
+      for (let i = 0; i < adjusterRanges3.length; i++) {
+        adjusterRanges3[i].addEventListener('input', ()=>{
+          positionAdjust1[0].style.transform = `rotate(${adjusterRanges3[0].value}deg) scale(${img1_scale.value * -1},${img1_scale.value}) translate(${adjusterRanges3[1].value}px, ${adjusterRanges3[2].value}px)`;
+          positionAdjust1[1].style.transform = `rotate(${adjusterRanges3[0].value}deg) scale(${img1_scale.value * -1},${img1_scale.value}) translate(${adjusterRanges3[1].value}px, ${adjusterRanges3[2].value}px)`;
+          adjusterNumbers3[i].value = adjusterRanges3[i].value;
+          
+          img1_position.innerText = `${adjusterRanges3[0].value}deg, ${adjusterRanges3[1].value}px, ${adjusterRanges3[2].value}px`;
+          img1_position.dataset.degree = adjusterRanges3[0].value;
+          img1_position.dataset.x = adjusterRanges3[1].value;
+          img1_position.dataset.y = adjusterRanges3[2].value;
+          img1_position.dataset.scale = img1_scale.value;
+        });
+        adjusterNumbers3[i].addEventListener('input',()=>{
+          positionAdjust1[0].style.transform = `rotate(${adjusterNumbers3[0].value}deg) scale(${img1_scale.value * -1},${img1_scale.value}) translate(${adjusterNumbers3[1].value}px, ${adjusterNumbers3[2].value}px)`;
+          positionAdjust1[1].style.transform = `rotate(${adjusterNumbers3[0].value}deg) scale(${img1_scale.value * -1},${img1_scale.value}) translate(${adjusterNumbers3[1].value}px, ${adjusterNumbers3[2].value}px)`;
+          adjusterRanges3[i].value = adjusterNumbers3[i].value;
+
+          img1_position.innerText = `${adjusterNumbers3[0].value}deg, ${adjusterNumbers3[1].value}px, ${adjusterNumbers3[2].value}px`;
+          img1_position.dataset.degree = adjusterNumbers3[0].value;
+          img1_position.dataset.x = adjusterNumbers3[1].value;
+          img1_position.dataset.y = adjusterNumbers3[2].value;
+          img1_position.dataset.scale = img1_scale.value;
+        });
+      }
+      const checkboxes3 = document.querySelectorAll('.adjuster3 input[type="checkbox"]');
+      checkboxes3[0].addEventListener('change', ()=>{
+        positionAdjust1[0].classList.toggle('visible');
+      });
+      checkboxes3[1].addEventListener('change', ()=>{
+        if(checkboxes3[1].checked){
+          positionAdjust1[0].src = URL.createObjectURL(whiteImg1Blob);
+        }else{
+          positionAdjust1[0].src = URL.createObjectURL(rawImg1Blob);
+        }
+      });
+      checkboxes3[2].addEventListener('change', ()=>{
+        positionAdjust1[0].classList.toggle('overlay');
+      });
+      checkboxes3[3].addEventListener('change', ()=>{
+        positionAdjust1[0].classList.toggle('difference');
+      });
+
+      // step3-2 adjuster
+      const adjusterRanges4 = document.querySelectorAll('.adjuster4 input[type="range"]');
+      const adjusterNumbers4 = document.querySelectorAll('.adjuster4 input[type="number"]');
+      const positionAdjust2 = document.getElementsByClassName('img2_positionAdjust');
+      const img2_position = document.getElementById('img2_position');
+      for (let i = 0; i < adjusterRanges4.length; i++) {
+        adjusterRanges4[i].addEventListener('input', ()=>{
+          positionAdjust2[0].style.transform = `rotate(${adjusterRanges4[0].value}deg) scale(${img2_scale.value * -1},${img2_scale.value}) translate(${adjusterRanges4[1].value}px, ${adjusterRanges4[2].value}px)`;
+          positionAdjust2[1].style.transform = `rotate(${adjusterRanges4[0].value}deg) scale(${img2_scale.value * -1},${img2_scale.value}) translate(${adjusterRanges4[1].value}px, ${adjusterRanges4[2].value}px)`;
+          adjusterNumbers4[i].value = adjusterRanges4[i].value;
+
+          img2_position.innerText = `${adjusterRanges4[0].value}deg, ${adjusterRanges4[1].value}px, ${adjusterRanges4[2].value}px`;
+          img2_position.dataset.degree = adjusterRanges4[0].value;
+          img2_position.dataset.x = adjusterRanges4[1].value;
+          img2_position.dataset.y = adjusterRanges4[2].value;
+          img2_position.dataset.scale = img2_scale.value;
+        });
+        adjusterNumbers4[i].addEventListener('input',()=>{
+          positionAdjust2[0].style.transform = `rotate(${adjusterNumbers4[0].value}deg) scale(${img2_scale.value * -1},${img2_scale.value}) translate(${adjusterNumbers4[1].value}px, ${adjusterNumbers4[2].value}px)`;
+          positionAdjust2[1].style.transform = `rotate(${adjusterNumbers4[0].value}deg) scale(${img2_scale.value * -1},${img2_scale.value}) translate(${adjusterNumbers4[1].value}px, ${adjusterNumbers4[2].value}px)`;
+          adjusterRanges4[i].value = adjusterNumbers4[i].value;
+
+          img2_position.innerText = `${adjusterNumbers4[0].value}deg, ${adjusterNumbers4[1].value}px, ${adjusterNumbers4[2].value}px`;
+          img2_position.dataset.degree = adjusterNumbers4[0].value;
+          img2_position.dataset.x = adjusterNumbers4[1].value;
+          img2_position.dataset.y = adjusterNumbers4[2].value;
+          img2_position.dataset.scale = img2_scale.value;
+        });
+      }
+      const checkboxes4 = document.querySelectorAll('.adjuster4 input[type="checkbox"]');
+      checkboxes4[0].addEventListener('change', ()=>{
+        positionAdjust2[0].classList.toggle('visible');
+      });
+      checkboxes4[1].addEventListener('change', ()=>{
+        if(checkboxes4[1].checked){
+          positionAdjust2[0].src = URL.createObjectURL(whiteImg2Blob);
+        }else{
+          positionAdjust2[0].src = URL.createObjectURL(rawImg2Blob);
+        }
+      });
+      checkboxes4[2].addEventListener('change', ()=>{
+        positionAdjust2[0].classList.toggle('overlay');
+      });
+      checkboxes4[3].addEventListener('change', ()=>{
+        positionAdjust2[0].classList.toggle('difference');
+      });
+
+      // blotting visible checkbox
+      document.getElementById('drawLineCheck').addEventListener('change', ()=>{
+        positionAdjust1[1].classList.toggle('visible');
+        positionAdjust2[1].classList.toggle('visible');        
+      });
+
+      //end of step3
+      const position_fit = document.getElementById("position_fit");
+      let csvTable;
+      position_fit.addEventListener("click", () => {
+        toggleAccordion(2);
+        toggleAccordion(3);
+        document.querySelectorAll('.menu_item')[2].classList.add('activate');
+        document.querySelectorAll('.label')[2].classList.add('activate');
+
+        
+        let lastCanvas1 = document.getElementById('lastCanvas1');
+        let woundImgTag = document.getElementById('preview_uploaded3');
+        let lctx1 = lastCanvas1.getContext('2d');
+        let grayImg1 = document.getElementById('grayImg1');
+        let deg1 = Number(img1_position.dataset.degree);
+        let sca1 = Number(img1_position.dataset.scale);
+        let x1 = Number(img1_position.dataset.x);
+        let y1 = Number(img1_position.dataset.y); // +0で数値にして大変な目に遭った
+        lastCanvas1.width = woundImgTag.naturalWidth;
+        lastCanvas1.height = woundImgTag.naturalHeight;
+        lctx1.save();
+        lctx1.clip(tempPath);
+        lctx1.translate(grayImg1.naturalWidth / 2, grayImg1.naturalHeight / 2 );
+        lctx1.rotate(deg1 * Math.PI / 180);
+        lctx1.scale(sca1 * -1, sca1);
+        lctx1.drawImage(grayImg1, x1 - grayImg1.naturalWidth / 2, y1 - grayImg1.naturalHeight / 2);
+        lctx1.restore();
+
+        let pixelColor1 = lctx1.getImageData(0, 0, lastCanvas1.width, lastCanvas1.height).data;
+        let array1 = [];
+        let area1;
+        let sum1 = 0;
+        let mean1;
+        let vari1 = 0;
+        let stddev1;
+        let min1;
+        let max1;
+
+        let id1 = img1FileName.substr(0,11);
+        let date1 = `${img1FileName.substr(12,4)}/${img1FileName.substr(16,2)}/${img1FileName.substr(18,2)}`;
+        let site1 =  img1FileName.substr(20);
+
+        for (let i = 0; i < pixelColor1.length / 4; i++) {
+          if(pixelColor1[i * 4 + 3] !== 0){
+            array1.push(pixelColor1[i * 4]);
+            sum1 += pixelColor1[i * 4];
+          }
+        }
+
+        area1 = array1.length;
+        mean1 = sum1 / area1;
+        
+        for (let i = 0; i < array1.length; i++) {
+          vari1 += Math.pow(array1[i] - mean1, 2) / area1;        
+        }
+
+        stddev1 = Math.sqrt(vari1);
+
+        min1 = Math.min(...array1);
+        max1 = Math.max(...array1);
+
+        let table = `
+          <tr>
+            <th></th>
+            <th>Area</th>
+            <th>Mean</th>
+            <th>StdDEV</th>
+            <th>Min</th>
+            <th>Max</th>
+          </tr>
+          <tr>
+            <td>image1</td>
+            <td>${area1}</td>
+            <td>${mean1.toFixed(3)}</td>
+            <td>${stddev1.toFixed(3)}</td>
+            <td>${min1}</td>
+            <td>${max1}</td>
+          </tr>
+          `
+
+        csvTable = `id,date,site,bef_g_area,bef_g_me,bef_g_min,bef_g_max,af_g_area,af_g_me,af_g_min,af_g_max,timeCount
+${id1},${date1},${site1},${area1},${mean1.toFixed(3)},${min1},${max1}`;
+
+        if(sourceImage2){
+          let lastCanvas2 = document.getElementById('lastCanvas2');
+          let lctx2 = lastCanvas2.getContext('2d');
+          let grayImg2 = document.getElementById('grayImg2');
+          let deg2 = Number(img2_position.dataset.degree);
+          let sca2 = Number(img2_position.dataset.scale);
+          let x2 = Number(img2_position.dataset.x);
+          let y2 = Number(img2_position.dataset.y);
+          lastCanvas2.width = woundImgTag.naturalWidth;
+          lastCanvas2.height = woundImgTag.naturalHeight;
+          lctx2.save();
+          lctx2.clip(tempPath);
+          lctx2.translate(grayImg2.naturalWidth / 2, grayImg2.naturalHeight / 2 );
+          lctx2.rotate(deg2 * Math.PI / 180);
+          lctx2.scale(sca2 * -1, sca2);
+          lctx2.drawImage(grayImg2, x2 - grayImg2.naturalWidth / 2, y2 - grayImg2.naturalHeight / 2);
+          lctx2.restore();
+
+          let pixelColor2 = lctx2.getImageData(0, 0, lastCanvas2.width, lastCanvas2.height).data;
+          let array2 = [];
+          let area2;
+          let sum2 = 0;
+          let mean2;
+          let vari2 = 0;
+          let stddev2;
+          let min2;
+          let max2;
+
+          let id2 = img2FileName.substr(0,11);
+          let date2 = `${img2FileName.substr(12,4)}/${img2FileName.substr(16,2)}/${img2FileName.substr(18,2)}`;
+          let site2 =  img2FileName.substr(20);
+          
+          for (let i = 0; i < pixelColor2.length / 4; i++) {
+            if(pixelColor2[i * 4 + 3] !== 0){
+              array2.push(pixelColor2[i * 4]);
+              sum2 += pixelColor2[i * 4];
+            }
+          }
+
+          area2 = array2.length;
+          mean2 = sum2 / area2;
+          
+          for (let i = 0; i < array2.length; i++) {
+            vari2 += Math.pow(array2[i] - mean2, 2) / area2;        
+          }
+
+          stddev2 = Math.sqrt(vari2);
+
+          min2 = Math.min(...array2);
+          max2 = Math.max(...array2);
+
+          table +=`
+            <tr>
+            <td>image2</td>
+            <td>${area2}</td>
+            <td>${mean2.toFixed(3)}</td>
+            <td>${stddev2.toFixed(3)}</td>
+            <td>${min2}</td>
+            <td>${max2}</td>
+            </tr>
+          `
+
+          csvTable += `,${area2},${mean2.toFixed(3)},${min2},${max2},${timeCount}`
+        }
+
+
+        document.getElementById('staticTable').innerHTML = table;
+        document.getElementById('staticTable2').innerHTML = table;
+      });
+
+      //end of step4
+      const record_results = document.getElementById("record_results");
+      record_results.addEventListener("click", () => {
+        toggleAccordion(3);
+        toggleAccordion(4);
+        document.querySelectorAll('.menu_item')[3].classList.add('activate');
+        document.querySelectorAll('.label')[3].classList.add('activate');
+
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        let csvBlob = new Blob([bom, csvTable], {'type': 'text/csv'});
+        document.getElementById('csvDownload').href = URL.createObjectURL(csvBlob);
+        document.getElementById('csvDownload').download = img1FileName.substr(0,11)+'.csv';
+
+        ct.drawImage(woundImg[0], 0, 0);
+
+        let deg1 = Number(img1_position.dataset.degree);
+        let sca1 = Number(img1_position.dataset.scale);
+        let x1 = Number(img1_position.dataset.x);
+        let y1 = Number(img1_position.dataset.y);
+        ct.save();
+        ct.globalCompositeOperation = "soft-light";
+        ct.translate(whiteImg1[0].naturalWidth / 2, whiteImg1[0].naturalHeight / 2 );
+        ct.rotate(deg1 * Math.PI / 180);
+        ct.scale(sca1 * -1, sca1);
+        ct.drawImage(whiteImg1[0], x1 - whiteImg1[0].naturalWidth / 2, y1 - whiteImg1[0].naturalHeight / 2);
+
+        ct.restore();
+        let deg2 = Number(img2_position.dataset.degree);
+        let sca2 = Number(img2_position.dataset.scale);
+        let x2 = Number(img2_position.dataset.x);
+        let y2 = Number(img2_position.dataset.y);
+        ct.save();
+        ct.globalCompositeOperation = "soft-light";
+        ct.translate(whiteImg2[0].naturalWidth / 2, whiteImg2[0].naturalHeight / 2 );
+        ct.rotate(deg2 * Math.PI / 180);
+        ct.scale(sca2 * -1, sca2);
+        ct.drawImage(whiteImg2[0], x2 - whiteImg2[0].naturalWidth / 2, y2 - whiteImg2[0].naturalHeight / 2);
+        ct.restore();
+
+        ct.stroke(tempPath);
+
+        can.toBlob((imgBlob)=>{
+          document.getElementById('imgDownloadDemo').src = URL.createObjectURL(imgBlob);
+          document.getElementById('imgDownload').href = URL.createObjectURL(imgBlob);
+          document.getElementById('imgDownload').download = img1FileName.substr(0,11)+'.png';
+        });
+      });
+    </script>
+  </body>
+</html>
